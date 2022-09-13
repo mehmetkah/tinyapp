@@ -1,4 +1,5 @@
 const express = require("express");
+const res = require("express/lib/response");
 const app = express();
 const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
@@ -63,3 +64,10 @@ app.post("/urls", (req, res) => {
   urlDatabase[id] = longURL;
   res.redirect(`/urls/${id}`); // Respond with 'Ok' (we will replace this)
 });
+ app.post("/urls/:id/delete", (req,res)=>{
+   const id = req.params.id
+delete urlDatabase[id]
+res.redirect("/urls")
+})
+
+
