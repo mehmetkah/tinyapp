@@ -26,6 +26,14 @@ const urlDatabase = {
   b2xVn2: "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com",
 };
+const getUserByEmail = function (email, userDatabase) {
+  for (const user in userDatabase) {
+    if (userDatabase[user].email === email) {
+      return userDatabase[user];
+    }
+  }
+  return null;
+};
 
 function generateRandomString() {
   let result = "";
@@ -36,7 +44,6 @@ function generateRandomString() {
   }
   return result;
 }
-//console.log(generateRandomString())
 
 app.get("/", (req, res) => {
   res.send("Hello!");
@@ -54,13 +61,12 @@ app.get("/hello", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const userId = req.cookies.user_id;
-  console.log("++++", userId);
   if (!userId) {
     return res.redirect("/register");
   }
   const user = users[userId];
-  const userEmail = user.email;
-  const templateVars = { urls: urlDatabase, user: userEmail };
+  const userEmail = user.email || null;
+  const templateVars = { urls: urlDatabase, email: userEmail, user };
   res.render("urls_index", templateVars);
 });
 
@@ -108,9 +114,15 @@ app.post("/urls/:id/edit", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  const user = req.body.email;
-  console.log(user);
-  res.cookie("user_id", user);
+  const email = req.body.email;
+  const password = req.body.password;
+  const user = getUserByEmail(email, users);
+  if (!email || !password)
+    return res.status(400).send("Email or password cannot be empty");
+  if (user.password !== password) return res.status(403).send("Wrong password");
+  if (!user) return res.status(403).send("User not found");
+
+  res.cookie("user_id", user.id);
   res.redirect("/urls");
 });
 
@@ -121,15 +133,39 @@ app.post("/logout", (req, res) => {
 app.get("/register", (req, res) => {
   res.render("urls_register");
 });
+
 app.post("/register", (req, res) => {
   const email = req.body.email;
   const pasw = req.body.password;
-  const randomID = generateRandomString();
-  users[randomID] = {
-    id: randomID,
-    email: email,
-    password: pasw,
+  const getUser = getUserByEmail(email, users);
+  if (!email || !pasw) {
+    return res.status(400).send("Cannt be empty");
+  }
+
+  if (getUser)
+    return res
+      .status(400)
+      .send("An account already exists for this email address");
+
+  if (getUser === null) {
+    const randomID = generateRandomString();
+    users[randomID] = {
+      id: randomID,
+      email: email,
+      password: pasw,
+    };
+
+    res.cookie("user_id", randomID);
+    res.redirect("/urls");
+  }
+});
+
+app.get("/login", (req, res) => {
+  const user = req.cookies.user_id;
+  const email = null;
+  const templateVars = {
+    user,
+    email,
   };
-  res.cookie("user_id", randomID);
-  res.redirect("/urls");
+  res.render("urls_login", templateVars);
 });

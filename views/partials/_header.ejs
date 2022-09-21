@@ -12,16 +12,15 @@
       </div>
     </div>
     <% if(!user) { %>
-        
-      <div class="login-container">
+        <div class="login-container">
         <form action="/login" method="post">
           <input type="text" placeholder="Username" name="username">
           <button type="submit">Login</button>
-          <!-- <button  href="/register" >Register</button> -->
+          <button  href="/register" >Register</button>
         </form>
       </div>
     <% } else { %>
-      <div>Logged in as <%= user%></div>
+      <div>Logged in as <%= email%></div>
       <div class="logout-container">
         <form action="/logout" method="post">
           <button type="submit">Logout</button>
