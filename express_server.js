@@ -116,11 +116,14 @@ app.post("/urls/:id/edit", (req, res) => {
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
+  console.log(email);
+  console.log(password);
   const user = getUserByEmail(email, users);
+  console.log("asd", user);
+  if (!user) return res.status(403).send("User not found");
   if (!email || !password)
     return res.status(400).send("Email or password cannot be empty");
   if (user.password !== password) return res.status(403).send("Wrong password");
-  if (!user) return res.status(403).send("User not found");
 
   res.cookie("user_id", user.id);
   res.redirect("/urls");
