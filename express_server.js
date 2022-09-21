@@ -1,13 +1,26 @@
 const express = require("express");
-// const res = require("express/lib/response");
 const cookieParser = require("cookie-parser");
-// const { post } = require("request");
+const res = require("express/lib/response");
+const { set } = require("express/lib/response");
 const app = express();
 const PORT = 8080; // default port 8080
 
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+const users = {};
+// const users = {
+//   userRandomID: {
+//     id: "userRandomID",
+//     email: "user@example.com",
+//     password: "purple-monkey-dinosaur",
+//   },
+//   user2RandomID: {
+//     id: "user2RandomID",
+//     email: "user2@example.com",
+//     password: "dishwasher-funk",
+//   },
+// };
 
 const urlDatabase = {
   b2xVn2: "http://www.lighthouselabs.ca",
@@ -40,25 +53,31 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const username = req.cookies.username;
-  const templateVars = { urls: urlDatabase, username };
+  const userId = req.cookies.user_id;
+  console.log("++++", userId);
+  if (!userId) {
+    return res.redirect("/register");
+  }
+  const user = users[userId];
+  const userEmail = user.email;
+  const templateVars = { urls: urlDatabase, user: userEmail };
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  const username = req.cookies.username;
+  const user = req.cookies.user_id;
   const templateVars = {
-    username,
+    user,
   };
   res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:id", (req, res) => {
-  const username = req.cookies.username;
+  const user = req.cookies.user_id;
   const templateVars = {
     id: req.params.id,
     longURL: "http://www.lighthouselabs.ca",
-    username,
+    user,
   };
   //res.render("urls_show", userObj);
   res.render("urls_show", templateVars);
@@ -89,12 +108,28 @@ app.post("/urls/:id/edit", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  const username = req.body.username;
-  res.cookie("username", username);
+  const user = req.body.email;
+  console.log(user);
+  res.cookie("user_id", user);
   res.redirect("/urls");
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("username");
+  res.clearCookie("user_id");
+  res.redirect("/urls");
+});
+app.get("/register", (req, res) => {
+  res.render("urls_register");
+});
+app.post("/register", (req, res) => {
+  const email = req.body.email;
+  const pasw = req.body.password;
+  const randomID = generateRandomString();
+  users[randomID] = {
+    id: randomID,
+    email: email,
+    password: pasw,
+  };
+  res.cookie("user_id", randomID);
   res.redirect("/urls");
 });
