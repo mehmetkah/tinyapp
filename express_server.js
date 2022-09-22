@@ -134,7 +134,11 @@ app.post("/logout", (req, res) => {
   res.redirect("/urls");
 });
 app.get("/register", (req, res) => {
-  res.render("urls_register");
+  const user = req.cookies.user_id;
+  const templateVars = {
+    user,
+  };
+  res.render("urls_register", templateVars);
 });
 
 app.post("/register", (req, res) => {

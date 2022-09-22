@@ -13,11 +13,13 @@
     </div>
     <% if(!user) { %>
         <div class="login-container">
-        <form action="/login" method="post">
-          <input type="text" placeholder="Username" name="username">
-          <button type="submit">Login</button>
-          <button  href="/register" >Register</button>
-        </form>
+        <!-- <form action="/login" method="post">
+          <input type="text" placeholder="Username" name="username"> -->
+          <!-- <button type="submit">Login</button> -->
+          <!-- <button  href="/register" >Register</button>
+        </form> -->
+        <a class="btn" href="/login">Login</a>
+        <a class="btn" href="/register">Register</a>
       </div>
     <% } else { %>
       <div>Logged in as <%= email%></div>
