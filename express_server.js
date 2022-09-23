@@ -2,6 +2,7 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const res = require("express/lib/response");
 const { set } = require("express/lib/response");
+const { cookie } = require("request");
 const app = express();
 const PORT = 8080; // default port 8080
 
@@ -22,9 +23,25 @@ const users = {};
 //   },
 // };
 
+const urlsForUser = function (id, urlDatabase) {
+  const userUrls = {};
+  for (const shortURL in urlDatabase) {
+    if (urlDatabase[shortURL].userID === id) {
+      userUrls[shortURL] = urlDatabase[shortURL];
+    }
+  }
+  return userUrls;
+};
+
 const urlDatabase = {
-  b2xVn2: "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW",
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW",
+  },
 };
 const getUserByEmail = function (email, userDatabase) {
   for (const user in userDatabase) {
@@ -65,51 +82,87 @@ app.get("/urls", (req, res) => {
     return res.redirect("/register");
   }
   const user = users[userId];
+  console.log(user, "++++++");
   const userEmail = user.email || null;
-  const templateVars = { urls: urlDatabase, email: userEmail, user };
+  const userUrlDatabase = urlsForUser(userId, urlDatabase);
+  const templateVars = { urls: userUrlDatabase, email: userEmail, user };
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  const user = req.cookies.user_id;
+  const userId = req.cookies.user_id;
+  if (!userId) {
+    return res.redirect("/register");
+  }
+  const user = users[userId];
+  const userEmail = user.email;
   const templateVars = {
+    email: userEmail,
     user,
   };
   res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:id", (req, res) => {
-  const user = req.cookies.user_id;
+  const userId = req.cookies.user_id;
+  if (!userId) {
+    res.send("User not logged in !");
+  }
+  const user = users[userId];
+  const shortUrl = req.params.id;
+  const userEmail = user.email;
+  if (urlDatabase[shortUrl].userID !== userId) {
+    res.send("Permission denied !");
+  }
   const templateVars = {
-    id: req.params.id,
-    longURL: "http://www.lighthouselabs.ca",
+    id: shortUrl,
+    longURL: urlDatabase[shortUrl].longURL,
     user,
+    email: userEmail,
   };
-  //res.render("urls_show", userObj);
+
   res.render("urls_show", templateVars);
 });
 app.get("/u/:id", (req, res) => {
-  const longURL = urlDatabase[req.params.id];
+  const id = req.params.id;
+  const userId = req.cookies.user_id;
+  if (urlDatabase[id].userID !== userId) {
+    res.send("Permission denied !");
+  }
+  const longURL = urlDatabase[req.params.id].longURL;
   res.redirect(longURL);
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req.body); // Log the POST request body to the console
   const id = generateRandomString();
   const longURL = req.body.longURL;
-  urlDatabase[id] = longURL;
-  res.redirect(`/urls/${id}`); // Respond with 'Ok' (we will replace this)
+  urlDatabase[id] = {
+    longURL,
+    userID: req.cookies.user_id,
+  };
+  // urlDatabase[id].longURL = longURL;
+
+  res.redirect("/urls");
 });
 app.post("/urls/:id/delete", (req, res) => {
   const id = req.params.id;
+  const userId = req.cookies.user_id;
+  if (urlDatabase[id].userID !== userId) {
+    res.send("Permission denied !");
+  }
+
   delete urlDatabase[id];
   res.redirect("/urls");
 });
 
 app.post("/urls/:id/edit", (req, res) => {
   const id = req.params.id;
+  const userId = req.cookies.user_id;
+  if (urlDatabase[id].userID !== userId) {
+    res.send("Permission denied !");
+  }
   const value = req.body.url;
-  urlDatabase[id] = value;
+  urlDatabase[id] = { longURL: value };
   res.redirect("/urls");
 });
 
@@ -134,12 +187,26 @@ app.post("/logout", (req, res) => {
   res.redirect("/urls");
 });
 app.get("/register", (req, res) => {
-  const user = req.cookies.user_id;
+  const userId = req.cookies.user_id;
+
+  if (userId) {
+    return res.redirect("/urls");
+  }
+
   const templateVars = {
-    user,
+    user: null,
   };
   res.render("urls_register", templateVars);
 });
+// const userId = req.cookies.user_id;
+//   if (!userId) {
+//     return res.redirect("/register");
+//   }
+//   const user = users[userId];
+//   const userEmail = user.email || null;
+//   const templateVars = { urls: urlDatabase, email: userEmail, user };
+//   res.render("urls_index", templateVars);
+// });
 
 app.post("/register", (req, res) => {
   const email = req.body.email;
@@ -168,7 +235,12 @@ app.post("/register", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
-  const user = req.cookies.user_id;
+  const userId = req.cookies.user_id;
+
+  if (userId) {
+    return res.redirect("/urls");
+  }
+  const user = userId;
   const email = null;
   const templateVars = {
     user,
