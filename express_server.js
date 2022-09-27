@@ -122,7 +122,6 @@ app.post("/urls", (req, res) => {
     longURL,
     userID: req.session.user_id,
   };
-  // urlDatabase[id].longURL = longURL;
 
   res.redirect("/urls");
 });
