@@ -1,8 +1,4 @@
 const express = require("express");
-const cookieParser = require("cookie-parser");
-const res = require("express/lib/response");
-const { set } = require("express/lib/response");
-const { cookie } = require("request");
 const cookieSession = require("cookie-session");
 const app = express();
 const bcrypt = require("bcryptjs");
@@ -52,9 +48,6 @@ app.get("/urls", (req, res) => {
   if (!user) {
     return res.redirect("/register");
   }
-
-  const userEmail = user.email || null;
-
   const userUrlDatabase = urlsForUser(user, urlDatabase);
   const templateVars = {
     urls: userUrlDatabase,
@@ -160,11 +153,11 @@ app.post("/login", (req, res) => {
   const password = req.body.password;
 
   const userId = getUserByEmail(email, users);
-  console.log("userId", userId);
+
   if (!userId) return res.status(403).send("User not found");
   if (!email || !password)
     return res.status(400).send("Email or password cannot be empty");
-  console.log("userId", userId);
+
   if (!bcrypt.compareSync(password, userId.password)) {
     return res.status(403).send("Wrong password");
   }
