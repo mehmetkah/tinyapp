@@ -4,24 +4,14 @@ const res = require("express/lib/response");
 const { set } = require("express/lib/response");
 const { cookie } = require("request");
 const app = express();
+const bcrypt = require("bcryptjs");
+
 const PORT = 8080; // default port 8080
 
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 const users = {};
-// const users = {
-//   userRandomID: {
-//     id: "userRandomID",
-//     email: "user@example.com",
-//     password: "purple-monkey-dinosaur",
-//   },
-//   user2RandomID: {
-//     id: "user2RandomID",
-//     email: "user2@example.com",
-//     password: "dishwasher-funk",
-//   },
-// };
 
 const urlsForUser = function (id, urlDatabase) {
   const userUrls = {};
@@ -169,16 +159,17 @@ app.post("/urls/:id/edit", (req, res) => {
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  console.log(email);
-  console.log(password);
-  const user = getUserByEmail(email, users);
-  console.log("asd", user);
-  if (!user) return res.status(403).send("User not found");
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  console.log("password", password);
+  const userId = getUserByEmail(email, users);
+  if (!userId) return res.status(403).send("User not found");
   if (!email || !password)
     return res.status(400).send("Email or password cannot be empty");
-  if (user.password !== password) return res.status(403).send("Wrong password");
-
-  res.cookie("user_id", user.id);
+  console.log("userId", userId);
+  if (!bcrypt.compareSync(password, userId.password)) {
+    return res.status(403).send("Wrong password");
+  }
+  res.cookie("user_id", userId.id);
   res.redirect("/urls");
 });
 
@@ -198,19 +189,11 @@ app.get("/register", (req, res) => {
   };
   res.render("urls_register", templateVars);
 });
-// const userId = req.cookies.user_id;
-//   if (!userId) {
-//     return res.redirect("/register");
-//   }
-//   const user = users[userId];
-//   const userEmail = user.email || null;
-//   const templateVars = { urls: urlDatabase, email: userEmail, user };
-//   res.render("urls_index", templateVars);
-// });
 
 app.post("/register", (req, res) => {
   const email = req.body.email;
   const pasw = req.body.password;
+  const hashedPassword = bcrypt.hashSync(pasw, 10);
   const getUser = getUserByEmail(email, users);
   if (!email || !pasw) {
     return res.status(400).send("Cannt be empty");
@@ -226,9 +209,9 @@ app.post("/register", (req, res) => {
     users[randomID] = {
       id: randomID,
       email: email,
-      password: pasw,
+      password: hashedPassword,
     };
-
+    console.log("+asd", users);
     res.cookie("user_id", randomID);
     res.redirect("/urls");
   }
