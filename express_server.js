@@ -38,6 +38,7 @@ app.get("/", (req, res) => {
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
+
 app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
@@ -88,9 +89,9 @@ app.get("/urls/:id", (req, res) => {
     user,
     email: userEmail,
   };
-
   res.render("urls_show", templateVars);
 });
+
 app.get("/u/:id", (req, res) => {
   const id = req.params.id;
   const userId = req.session.user_id;
@@ -100,6 +101,7 @@ app.get("/u/:id", (req, res) => {
   const longURL = urlDatabase[req.params.id].longURL;
   res.redirect(longURL);
 });
+
 app.get("/login", (req, res) => {
   const userId = req.session.user_id;
 
@@ -115,6 +117,19 @@ app.get("/login", (req, res) => {
   res.render("urls_login", templateVars);
 });
 
+app.get("/register", (req, res) => {
+  const userId = req.session.user_id;
+
+  if (userId) {
+    return res.redirect("/urls");
+  }
+
+  const templateVars = {
+    user: null,
+  };
+  res.render("urls_register", templateVars);
+});
+
 app.post("/urls", (req, res) => {
   const id = generateRandomString();
   const longURL = req.body.longURL;
@@ -125,6 +140,7 @@ app.post("/urls", (req, res) => {
 
   res.redirect("/urls");
 });
+
 app.post("/urls/:id/delete", (req, res) => {
   const id = req.params.id;
   const userId = req.session.user_id;
@@ -167,18 +183,6 @@ app.post("/login", (req, res) => {
 app.post("/logout", (req, res) => {
   req.session = null;
   res.redirect("/urls");
-});
-app.get("/register", (req, res) => {
-  const userId = req.session.user_id;
-
-  if (userId) {
-    return res.redirect("/urls");
-  }
-
-  const templateVars = {
-    user: null,
-  };
-  res.render("urls_register", templateVars);
 });
 
 app.post("/register", (req, res) => {
