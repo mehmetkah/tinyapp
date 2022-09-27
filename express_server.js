@@ -3,62 +3,42 @@ const cookieParser = require("cookie-parser");
 const res = require("express/lib/response");
 const { set } = require("express/lib/response");
 const { cookie } = require("request");
+const cookieSession = require("cookie-session");
 const app = express();
 const bcrypt = require("bcryptjs");
+const PORT = 8080;
 
-const PORT = 8080; // default port 8080
+const {
+  generateRandomString,
+  cookieHasUser,
+  getUserByEmail,
+  urlsForUser,
+} = require("./helper");
 
-app.set("view engine", "ejs");
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 const users = {};
 
-const urlsForUser = function (id, urlDatabase) {
-  const userUrls = {};
-  for (const shortURL in urlDatabase) {
-    if (urlDatabase[shortURL].userID === id) {
-      userUrls[shortURL] = urlDatabase[shortURL];
-    }
-  }
-  return userUrls;
-};
+const urlDatabase = {};
 
-const urlDatabase = {
-  b6UTxQ: {
-    longURL: "https://www.tsn.ca",
-    userID: "aJ48lW",
-  },
-  i3BoGr: {
-    longURL: "https://www.google.ca",
-    userID: "aJ48lW",
-  },
-};
-const getUserByEmail = function (email, userDatabase) {
-  for (const user in userDatabase) {
-    if (userDatabase[user].email === email) {
-      return userDatabase[user];
-    }
-  }
-  return null;
-};
+app.set("view engine", "ejs");
 
-function generateRandomString() {
-  let result = "";
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 6; i++) {
-    result += characters.charAt(Math.random() * characters.length);
-  }
-  return result;
-}
+app.use(express.urlencoded({ extended: true }));
+
+app.use(
+  cookieSession({
+    name: "session",
+    secret: "mfk",
+    maxAge: 24 * 60 * 60 * 1000,
+  })
+);
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  if (cookieHasUser(req.session.user_id, users)) {
+    res.redirect("/urls");
+  } else {
+    res.redirect("/login");
+  }
 });
 
-app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`);
-});
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
@@ -67,20 +47,25 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const userId = req.cookies.user_id;
-  if (!userId) {
+  const user = req.session.user_id;
+
+  if (!user) {
     return res.redirect("/register");
   }
-  const user = users[userId];
-  console.log(user, "++++++");
+
   const userEmail = user.email || null;
-  const userUrlDatabase = urlsForUser(userId, urlDatabase);
-  const templateVars = { urls: userUrlDatabase, email: userEmail, user };
+
+  const userUrlDatabase = urlsForUser(user, urlDatabase);
+  const templateVars = {
+    urls: userUrlDatabase,
+    email: users[user].email,
+    user,
+  };
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   if (!userId) {
     return res.redirect("/register");
   }
@@ -94,7 +79,7 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:id", (req, res) => {
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   if (!userId) {
     res.send("User not logged in !");
   }
@@ -115,12 +100,26 @@ app.get("/urls/:id", (req, res) => {
 });
 app.get("/u/:id", (req, res) => {
   const id = req.params.id;
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   if (urlDatabase[id].userID !== userId) {
     res.send("Permission denied !");
   }
   const longURL = urlDatabase[req.params.id].longURL;
   res.redirect(longURL);
+});
+app.get("/login", (req, res) => {
+  const userId = req.session.user_id;
+
+  if (userId) {
+    return res.redirect("/urls");
+  }
+  const user = userId;
+  const email = null;
+  const templateVars = {
+    user,
+    email,
+  };
+  res.render("urls_login", templateVars);
 });
 
 app.post("/urls", (req, res) => {
@@ -128,7 +127,7 @@ app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
   urlDatabase[id] = {
     longURL,
-    userID: req.cookies.user_id,
+    userID: req.session.user_id,
   };
   // urlDatabase[id].longURL = longURL;
 
@@ -136,7 +135,7 @@ app.post("/urls", (req, res) => {
 });
 app.post("/urls/:id/delete", (req, res) => {
   const id = req.params.id;
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   if (urlDatabase[id].userID !== userId) {
     res.send("Permission denied !");
   }
@@ -147,7 +146,7 @@ app.post("/urls/:id/delete", (req, res) => {
 
 app.post("/urls/:id/edit", (req, res) => {
   const id = req.params.id;
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   if (urlDatabase[id].userID !== userId) {
     res.send("Permission denied !");
   }
@@ -159,9 +158,9 @@ app.post("/urls/:id/edit", (req, res) => {
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  const hashedPassword = bcrypt.hashSync(password, 10);
-  console.log("password", password);
+
   const userId = getUserByEmail(email, users);
+  console.log("userId", userId);
   if (!userId) return res.status(403).send("User not found");
   if (!email || !password)
     return res.status(400).send("Email or password cannot be empty");
@@ -169,16 +168,16 @@ app.post("/login", (req, res) => {
   if (!bcrypt.compareSync(password, userId.password)) {
     return res.status(403).send("Wrong password");
   }
-  res.cookie("user_id", userId.id);
+  req.session.user_id = userId.id;
   res.redirect("/urls");
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session = null;
   res.redirect("/urls");
 });
 app.get("/register", (req, res) => {
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
 
   if (userId) {
     return res.redirect("/urls");
@@ -194,11 +193,11 @@ app.post("/register", (req, res) => {
   const email = req.body.email;
   const pasw = req.body.password;
   const hashedPassword = bcrypt.hashSync(pasw, 10);
-  const getUser = getUserByEmail(email, users);
-  if (!email || !pasw) {
-    return res.status(400).send("Cannt be empty");
-  }
 
+  if (!email || !pasw) {
+    return res.status(400).send("Cannot be empty");
+  }
+  const getUser = getUserByEmail(email, users);
   if (getUser)
     return res
       .status(400)
@@ -211,23 +210,13 @@ app.post("/register", (req, res) => {
       email: email,
       password: hashedPassword,
     };
-    console.log("+asd", users);
-    res.cookie("user_id", randomID);
+
+    req.session.user_id = randomID;
+
     res.redirect("/urls");
   }
 });
 
-app.get("/login", (req, res) => {
-  const userId = req.cookies.user_id;
-
-  if (userId) {
-    return res.redirect("/urls");
-  }
-  const user = userId;
-  const email = null;
-  const templateVars = {
-    user,
-    email,
-  };
-  res.render("urls_login", templateVars);
+app.listen(PORT, () => {
+  console.log(`Example app listening on port ${PORT}!`);
 });
