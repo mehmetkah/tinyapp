@@ -133,6 +133,7 @@ app.get("/register", (req, res) => {
 app.post("/urls", (req, res) => {
   const id = generateRandomString();
   const longURL = req.body.longURL;
+  console.log("+++", longURL);
   urlDatabase[id] = {
     longURL,
     userID: req.session.user_id,
@@ -154,12 +155,16 @@ app.post("/urls/:id/delete", (req, res) => {
 
 app.post("/urls/:id/edit", (req, res) => {
   const id = req.params.id;
-  const userId = req.session.user_id;
-  if (urlDatabase[id].userID !== userId) {
-    res.send("Permission denied !");
+  const longURL = req.body.longURL;
+  const userID = req.session.user_id;
+  if (urlDatabase[id].userID !== userID) {
+    return res.send("Permission denied !");
   }
-  const value = req.body.url;
-  urlDatabase[id] = { longURL: value };
+
+  urlDatabase[id] = {
+    longURL,
+    userID,
+  };
   res.redirect("/urls");
 });
 
