@@ -133,7 +133,6 @@ app.get("/register", (req, res) => {
 app.post("/urls", (req, res) => {
   const id = generateRandomString();
   const longURL = req.body.longURL;
-  console.log("+++", longURL);
   urlDatabase[id] = {
     longURL,
     userID: req.session.user_id,
