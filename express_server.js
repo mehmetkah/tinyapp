@@ -47,7 +47,7 @@ app.get("/urls", (req, res) => {
   const user = req.session.user_id;
 
   if (!user) {
-    return res.redirect("/register");
+    return res.send("User not logged in !");
   }
   const userUrlDatabase = urlsForUser(user, urlDatabase);
   const templateVars = {
@@ -61,7 +61,7 @@ app.get("/urls", (req, res) => {
 app.get("/urls/new", (req, res) => {
   const userId = req.session.user_id;
   if (!userId) {
-    return res.redirect("/register");
+    return res.redirect("/login");
   }
   const user = users[userId];
   const userEmail = user.email;
@@ -70,6 +70,7 @@ app.get("/urls/new", (req, res) => {
     user,
   };
   res.render("urls_new", templateVars);
+  res.redirect(`urls/${userId}`);
 });
 
 app.get("/urls/:id", (req, res) => {
@@ -138,7 +139,7 @@ app.post("/urls", (req, res) => {
     userID: req.session.user_id,
   };
 
-  res.redirect("/urls");
+  res.redirect(`/urls/${id}`);
 });
 
 app.post("/urls/:id/delete", (req, res) => {
@@ -186,7 +187,7 @@ app.post("/login", (req, res) => {
 
 app.post("/logout", (req, res) => {
   req.session = null;
-  res.redirect("/urls");
+  res.redirect("/login");
 });
 
 app.post("/register", (req, res) => {
