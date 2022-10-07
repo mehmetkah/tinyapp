@@ -81,6 +81,9 @@ app.get("/urls/:id", (req, res) => {
   const user = users[userId];
   const shortUrl = req.params.id;
   const userEmail = user.email;
+  if (!urlDatabase[shortUrl]) {
+    return res.send("Invalid shortUrl");
+  }
   if (urlDatabase[shortUrl].userID !== userId) {
     res.send("Permission denied !");
   }
@@ -96,9 +99,13 @@ app.get("/urls/:id", (req, res) => {
 app.get("/u/:id", (req, res) => {
   const id = req.params.id;
   const userId = req.session.user_id;
+  if (!urlDatabase[id]) {
+    return res.send("Invalid id");
+  }
   if (urlDatabase[id].userID !== userId) {
     res.send("Permission denied !");
   }
+
   const longURL = urlDatabase[req.params.id].longURL;
   res.redirect(longURL);
 });
